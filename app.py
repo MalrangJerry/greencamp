@@ -9,14 +9,19 @@ from supabase import create_client
 from streamlit_autorefresh import st_autorefresh
 
 # =====================
-# 설정
+# Config
 # =====================
-UI_REFRESH_SEC = 1          # 타이머/화면은 1초 단위
-POLL_SEC = 60               # Riot API/DB 업데이트는 60초 단위
-FETCH_MATCH_IDS = 20
+UI_REFRESH_SEC = 1          # 타이머는 1초 단위
+POLL_SEC = 60               # Riot API/DB 업데이트는 60초 단위(렉 방지)
+FETCH_MATCH_IDS = 20        # 세션 중 놓치지 않게 넉넉히
 SOLOQ_QUEUE_ID = 420
 REGION = "asia"
 
+ALERT_SHOW_SEC = 4          # 새 승/패 감지 시 오버레이 유지 시간(초)
+
+# =====================
+# Secrets
+# =====================
 RIOT_API_KEY = st.secrets["RIOT_API_KEY"]
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_ANON_KEY = st.secrets["SUPABASE_ANON_KEY"]
@@ -24,34 +29,41 @@ SUPABASE_ANON_KEY = st.secrets["SUPABASE_ANON_KEY"]
 HEADERS = {"X-Riot-Token": RIOT_API_KEY}
 supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-st.set_page_config(page_title="5:5 전광판", layout="wide")
+# =====================
+# UI mode
+# =====================
+# 방송용: URL 뒤에 ?overlay=1
+overlay = st.query_params.get("overlay", "0") == "1"
 
-# ✅ 1초마다 UI만 갱신
+st.set_page_config(page_title="5:5 전광판", layout="wide")
 st_autorefresh(interval=UI_REFRESH_SEC * 1000, key="ui_tick")
 
-# =====================
-# 컴팩트(방송 오버레이) CSS
-# =====================
-overlay = st.query_params.get("overlay", "0") == "1"   # URL 뒤에 ?overlay=1 붙이면 오버레이 모드
+# 컴팩트 CSS
 if overlay:
     st.markdown(
         """
         <style>
-        /* 상단/하단 Streamlit 기본 여백 제거 */
-        .block-container {padding-top: 0.6rem; padding-bottom: 0.6rem; padding-left: 0.8rem; padding-right: 0.8rem;}
+        .block-container {padding-top: 0.5rem; padding-bottom: 0.5rem; padding-left: 0.6rem; padding-right: 0.6rem;}
         header, footer {visibility: hidden;}
-        /* 제목/텍스트 작게 */
-        h1 {font-size: 20px !important; margin: 0.2rem 0 0.4rem 0;}
-        h2 {font-size: 16px !important; margin: 0.2rem 0 0.3rem 0;}
-        .stMetric {padding: 0.2rem 0.4rem;}
-        /* 데이터프레임은 너무 커서 숨기기 권장 (우린 HTML표 사용) */
+        h1 {font-size: 18px !important; margin: 0.2rem 0 0.4rem 0;}
+        h2 {font-size: 14px !important; margin: 0.2rem 0 0.3rem 0;}
         </style>
         """,
         unsafe_allow_html=True
     )
 
 # =====================
-# Riot helpers (Riot ID)
+# Session state (alert)
+# =====================
+if "alert_until" not in st.session_state:
+    st.session_state["alert_until"] = 0.0
+if "alert_text" not in st.session_state:
+    st.session_state["alert_text"] = ""
+if "last_poll_ts" not in st.session_state:
+    st.session_state["last_poll_ts"] = 0.0
+
+# =====================
+# Riot helpers (Riot ID -> puuid)
 # =====================
 @st.cache_data(ttl=3600)
 def riotid_to_puuid(riot_id: str):
@@ -90,52 +102,74 @@ def parse_match_for_player(match_detail: dict, puuid: str):
     return queue_id, played_at, win_val
 
 # =====================
-# DB helpers
+# Supabase helpers
 # =====================
 def get_active_session():
-    resp = (supabase.table("sessions")
-            .select("*")
-            .is_("ended_at", "null")
-            .order("id", desc=True)
-            .limit(1)
-            .execute())
+    resp = (
+        supabase.table("sessions")
+        .select("*")
+        .is_("ended_at", "null")
+        .order("id", desc=True)
+        .limit(1)
+        .execute()
+    )
     rows = resp.data or []
     return rows[0] if rows else None
 
-def create_session(title: str, duration_minutes: int):
-    supabase.table("sessions").insert({"title": title, "duration_minutes": duration_minutes}).execute()
+def create_session(title: str, duration_minutes: int, team_a_name: str, team_b_name: str):
+    supabase.table("sessions").insert({
+        "title": title,
+        "duration_minutes": duration_minutes,
+        "team_a_name": team_a_name,
+        "team_b_name": team_b_name,
+    }).execute()
+
+def update_team_names(session_id: int, team_a_name: str, team_b_name: str):
+    supabase.table("sessions").update({
+        "team_a_name": team_a_name,
+        "team_b_name": team_b_name,
+    }).eq("id", session_id).execute()
 
 def start_session(session_id: int):
-    supabase.table("sessions").update({"started_at": datetime.now(tz=timezone.utc).isoformat()}).eq("id", session_id).execute()
+    supabase.table("sessions").update({
+        "started_at": datetime.now(tz=timezone.utc).isoformat()
+    }).eq("id", session_id).execute()
 
 def end_session(session_id: int):
-    supabase.table("sessions").update({"ended_at": datetime.now(tz=timezone.utc).isoformat()}).eq("id", session_id).execute()
+    supabase.table("sessions").update({
+        "ended_at": datetime.now(tz=timezone.utc).isoformat()
+    }).eq("id", session_id).execute()
 
 def upsert_session_player(session_id: int, real_name: str, riot_id: str, puuid: str, team: str):
+    # nickname 컬럼에는 riot_id 저장(닉#태그)
     supabase.table("session_players").upsert({
         "session_id": session_id,
         "real_name": real_name,
-        "nickname": riot_id,  # riot_id 저장
+        "nickname": riot_id,
         "puuid": puuid,
-        "team": team
+        "team": team,
     }, on_conflict="session_id,nickname").execute()
 
 def load_players(session_id: int):
-    resp = (supabase.table("session_players")
-            .select("real_name,nickname,puuid,team")
-            .eq("session_id", session_id)
-            .execute())
+    resp = (
+        supabase.table("session_players")
+        .select("real_name,nickname,puuid,team")
+        .eq("session_id", session_id)
+        .execute()
+    )
     return resp.data or []
 
 def existing_match_ids(session_id: int, riot_id: str, match_ids: list[str]) -> set:
     if not match_ids:
         return set()
-    resp = (supabase.table("session_results")
-            .select("match_id")
-            .eq("session_id", session_id)
-            .eq("nickname", riot_id)
-            .in_("match_id", match_ids)
-            .execute())
+    resp = (
+        supabase.table("session_results")
+        .select("match_id")
+        .eq("session_id", session_id)
+        .eq("nickname", riot_id)
+        .in_("match_id", match_ids)
+        .execute()
+    )
     return {r["match_id"] for r in (resp.data or [])}
 
 def insert_results(rows: list[dict]):
@@ -143,111 +177,137 @@ def insert_results(rows: list[dict]):
         supabase.table("session_results").upsert(rows, on_conflict="session_id,nickname,match_id").execute()
 
 def load_results(session_id: int):
-    resp = (supabase.table("session_results")
-            .select("nickname,win,played_at,match_id")
-            .eq("session_id", session_id)
-            .execute())
+    resp = (
+        supabase.table("session_results")
+        .select("nickname,win,played_at,match_id")
+        .eq("session_id", session_id)
+        .execute()
+    )
     return resp.data or []
 
 # =====================
-# 사이드바 (overlay 모드에서는 숨기는 게 좋음)
+# UI: Admin sidebar (운영 화면만)
 # =====================
 if not overlay:
     with st.sidebar:
-        st.header("⚙️ 세션 설정")
-        active = get_active_session()
+        st.header("⚙️ 운영 설정")
 
+        # 세션 생성
         title = st.text_input("세션 제목", value=f"5:5 솔랭 승부 {datetime.now().strftime('%m/%d %H:%M')}")
         duration = st.number_input("타이머(분)", min_value=10, max_value=600, value=180, step=10)
 
+        team_a_name_new = st.text_input("팀 A 이름", value="RED")
+        team_b_name_new = st.text_input("팀 B 이름", value="BLUE")
+
         if st.button("➕ 새 세션 만들기"):
-            create_session(title, int(duration))
+            create_session(title, int(duration), team_a_name_new, team_b_name_new)
             st.rerun()
 
         active = get_active_session()
-        if not active:
-            st.stop()
+        if active:
+            st.divider()
+            st.subheader("현재 활성 세션")
+            st.write(f"#{active['id']} — {active.get('title','')}")
+            st.caption("이미 세션이 있으면 여기서 팀 이름만 수정해도 됨")
 
-        if not active.get("started_at"):
-            if st.button("▶️ 세션 시작"):
-                start_session(active["id"])
+            cur_a = active.get("team_a_name") or "TEAM A"
+            cur_b = active.get("team_b_name") or "TEAM B"
+            edit_a = st.text_input("현재 팀 A 이름", value=cur_a, key="edit_a")
+            edit_b = st.text_input("현재 팀 B 이름", value=cur_b, key="edit_b")
+            if st.button("💾 팀 이름 저장"):
+                update_team_names(active["id"], edit_a, edit_b)
                 st.rerun()
-        else:
-            if st.button("⏹ 세션 종료"):
-                end_session(active["id"])
-                st.rerun()
 
-        st.divider()
-        st.subheader("👥 팀 입력 (본명,게임닉#태그)")
-        st.caption("예: 스트리머 닉네임,조회할 롤닉네임 ex.로기닷#KR1")
-        team_a_text = st.text_area("팀 A (최대 5줄)", height=140)
-        team_b_text = st.text_area("팀 B (최대 5줄)", height=140)
+            if not active.get("started_at"):
+                if st.button("▶️ 세션 시작"):
+                    start_session(active["id"])
+                    st.rerun()
+            else:
+                if st.button("⏹ 세션 종료(확정)"):
+                    end_session(active["id"])
+                    st.rerun()
 
-        if st.button("💾 팀 저장"):
-            active = get_active_session()
-            if not active:
-                st.stop()
-            sid = active["id"]
+            st.divider()
+            st.subheader("👥 팀 구성 (본명,게임닉#태그)")
+            st.caption("예: 홍길동,Hide on bush#KR1")
 
-            def parse_lines(txt):
+            team_a_text = st.text_area("팀 A (최대 5줄)", height=140)
+            team_b_text = st.text_area("팀 B (최대 5줄)", height=140)
+
+            def parse_lines(txt: str):
                 out = []
                 for line in txt.split("\n"):
                     line = line.strip()
                     if not line:
                         continue
                     if "," not in line:
+                        # 본명 누락
                         out.append((None, line))
                     else:
                         rn, rid = line.split(",", 1)
                         out.append((rn.strip(), rid.strip()))
                 return out[:5]
 
-            A = parse_lines(team_a_text)
-            B = parse_lines(team_b_text)
+            if st.button("💾 팀 저장(riot_id→puuid 조회)"):
+                active2 = get_active_session()
+                if not active2:
+                    st.stop()
+                sid = active2["id"]
 
-            errors = []
-            for rn, rid in A:
-                puuid = riotid_to_puuid(rid)
-                if puuid and rn:
-                    upsert_session_player(sid, rn, rid, puuid, "A")
+                A = parse_lines(team_a_text)
+                B = parse_lines(team_b_text)
+
+                fail = []
+
+                for rn, rid in A:
+                    puuid = riotid_to_puuid(rid)
+                    if rn and puuid:
+                        upsert_session_player(sid, rn, rid, puuid, "A")
+                    else:
+                        fail.append(rid)
+
+                for rn, rid in B:
+                    puuid = riotid_to_puuid(rid)
+                    if rn and puuid:
+                        upsert_session_player(sid, rn, rid, puuid, "B")
+                    else:
+                        fail.append(rid)
+
+                if fail:
+                    st.error("저장 실패(본명 누락/형식 오류/태그 확인):\n- " + "\n- ".join(fail))
                 else:
-                    errors.append(line)
+                    st.success("팀 저장 완료")
+                st.rerun()
 
-            for rn, rid in B:
-                puuid = riotid_to_puuid(rid)
-                if puuid and rn:
-                    upsert_session_player(sid, rn, rid, puuid, "B")
-                else:
-                    errors.append(line)
-
-            st.success("저장 완료(오류 있으면 입력 형식 확인)")
-            st.rerun()
-
+# =====================
+# Load active session
+# =====================
 active = get_active_session()
 if not active:
-    st.info("세션이 없습니다. (overlay 모드면 운영 화면에서 세션을 먼저 만들어야 함)")
+    st.info("활성 세션이 없습니다. (운영 화면에서 먼저 세션을 만들고 시작하세요)")
     st.stop()
 
 session_id = active["id"]
 started_at = active.get("started_at")
 ended_at = active.get("ended_at")
 duration_min = int(active.get("duration_minutes", 180))
+team_a_name = active.get("team_a_name") or "TEAM A"
+team_b_name = active.get("team_b_name") or "TEAM B"
 
 players = load_players(session_id)
 
 # =====================
-# ✅ 60초마다만 Riot API polling (딜레이/깜빡임 줄이기 핵심)
+# Polling (60초마다만)
 # =====================
 now = datetime.now(tz=timezone.utc)
-if "last_poll_ts" not in st.session_state:
-    st.session_state["last_poll_ts"] = 0
-
 do_poll = (not ended_at) and started_at and (time.time() - st.session_state["last_poll_ts"] >= POLL_SEC)
 
-new_events = []
+new_events = []  # (real_name, "W"/"L")
 if do_poll and players:
     st.session_state["last_poll_ts"] = time.time()
+
     start_dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+
     for p in players:
         real_name = p.get("real_name") or p["nickname"]
         riot_id = p["nickname"]
@@ -262,8 +322,10 @@ if do_poll and players:
             detail = get_match_detail(mid)
             if not detail:
                 continue
+
             queue_id, played_at, win_val = parse_match_for_player(detail, puuid)
 
+            # 솔랭만 + 세션 시작 이후만
             if queue_id != SOLOQ_QUEUE_ID:
                 continue
             if played_at < start_dt or played_at > now:
@@ -280,15 +342,19 @@ if do_poll and players:
             })
             new_events.append((real_name, "W" if win_val else "L"))
 
-            time.sleep(0.15)
+            time.sleep(0.15)  # rate limit 완화
 
         insert_results(inserts)
 
-# =====================
-# 타이머 (1초 단위로 즉시 반영)
-# =====================
-st.markdown("# 🏟️ 5:5 전광판" if not overlay else "## 🏟️ 5:5 전광판")
+    # ✅ 새 결과가 있으면 "오버레이" 트리거 (화면 전환 없이 표 위로 띄움)
+    if new_events:
+        n, r = new_events[-1]
+        st.session_state["alert_text"] = f"{n} {'승리' if r=='W' else '패배'}"
+        st.session_state["alert_until"] = time.time() + ALERT_SHOW_SEC
 
+# =====================
+# Timer text (1초 단위)
+# =====================
 if started_at:
     start_dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
     end_dt = start_dt + timedelta(minutes=duration_min)
@@ -301,17 +367,17 @@ else:
     timer_text = "시작 전"
 
 # =====================
-# 결과 집계 (본명 기준)
+# Scoreboard aggregation (본명 + W/L only)
 # =====================
 results = load_results(session_id)
-df_res = pd.DataFrame(results) if results else pd.DataFrame(columns=["nickname","win"])
+df_res = pd.DataFrame(results) if results else pd.DataFrame(columns=["nickname", "win"])
 
 # riot_id -> real_name
 rid_to_real = {p["nickname"]: (p.get("real_name") or p["nickname"]) for p in players}
-teamA = [p["nickname"] for p in players if p["team"] == "A"]
-teamB = [p["nickname"] for p in players if p["team"] == "B"]
+teamA = [p["nickname"] for p in players if p.get("team") == "A"]
+teamB = [p["nickname"] for p in players if p.get("team") == "B"]
 
-def wl(riot_id):
+def wl(riot_id: str):
     if df_res.empty:
         return 0, 0
     sub = df_res[df_res["nickname"] == riot_id]
@@ -319,7 +385,7 @@ def wl(riot_id):
     l = int((sub["win"] == False).sum())
     return w, l
 
-def team_wins(team_list):
+def team_wins(team_list: list[str]):
     if df_res.empty:
         return 0
     sub = df_res[df_res["nickname"].isin(team_list)]
@@ -329,44 +395,25 @@ A_wins = team_wins(teamA)
 B_wins = team_wins(teamB)
 
 # =====================
-# 🔥 방송용 전광판(작게)
+# Render helpers (compact HTML tables)
 # =====================
-# 상단: 타이머 + 팀 점수
-top = f"""
-<div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-  <div style="font-size:{'14px' if overlay else '18px'}; font-weight:700;">⏱ {timer_text}</div>
-  <div style="font-size:{'18px' if overlay else '28px'}; font-weight:800;">
-    🟥 A {A_wins} : {B_wins} B 🟦
-  </div>
-</div>
-"""
-st.markdown(top, unsafe_allow_html=True)
-
-# 새 알림은 작게(overlay에선 1줄만)
-if new_events:
-    if overlay:
-        last = new_events[-1]
-        st.markdown(f"<div style='font-size:12px; opacity:0.9;'>🔔 {last[0]} {last[1]}</div>", unsafe_allow_html=True)
-    else:
-        st.success("새 경기 감지: " + ", ".join([f"{n} {r}" for n, r in new_events]))
-
-# 팀 표(본명 + 승/패만)
-def render_team(team_list, title, color):
+def render_team_table(team_list, title):
     rows = ""
     for rid in team_list:
         real = rid_to_real.get(rid, rid)
         w, l = wl(rid)
         rows += f"""
         <tr>
-          <td style="padding:2px 6px; white-space:nowrap;">{real}</td>
-          <td style="padding:2px 6px; text-align:right; width:40px;">{w}</td>
-          <td style="padding:2px 6px; text-align:right; width:40px;">{l}</td>
+          <td style="padding:2px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{real}</td>
+          <td style="padding:2px 6px; text-align:right; width:42px;">{w}</td>
+          <td style="padding:2px 6px; text-align:right; width:42px;">{l}</td>
         </tr>
         """
-    font = "12px" if overlay else "14px"
+    font = "11px" if overlay else "14px"
+    title_font = "12px" if overlay else "16px"
     return f"""
-    <div style="border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:6px;">
-      <div style="font-weight:800; margin-bottom:4px; font-size:{font};">{title}</div>
+    <div style="border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:6px;">
+      <div style="font-weight:900; margin-bottom:4px; font-size:{title_font};">{title}</div>
       <table style="width:100%; border-collapse:collapse; font-size:{font};">
         <thead>
           <tr style="opacity:0.8;">
@@ -382,9 +429,63 @@ def render_team(team_list, title, color):
     </div>
     """
 
+# =====================
+# Main UI
+# =====================
+if not overlay:
+    st.title("🏟️ 5:5 전광판")
+else:
+    st.markdown("## 🏟️ 5:5 전광판")
+
+# 상단: 타이머 상시 + 팀 스코어 상시
+st.markdown(
+    f"""
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px;">
+      <div style="font-weight:900; font-size:{'12px' if overlay else '18px'};">⏱ {timer_text}</div>
+      <div style="font-weight:1000; font-size:{'16px' if overlay else '30px'};">
+        🟥 {team_a_name} {A_wins} : {B_wins} {team_b_name} 🟦
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# 전광판 표(항상 표시)
 c1, c2 = st.columns(2, gap="small")
 with c1:
-    st.markdown(render_team(teamA, "🟥 TEAM A", "red"), unsafe_allow_html=True)
+    st.markdown(render_team_table(teamA, f"🟥 {team_a_name}"), unsafe_allow_html=True)
 with c2:
-    st.markdown(render_team(teamB, "🟦 TEAM B", "blue"), unsafe_allow_html=True)
+    st.markdown(render_team_table(teamB, f"🟦 {team_b_name}"), unsafe_allow_html=True)
 
+# 새 결과 오버레이(표 위에 뜨고 자동 사라짐)
+show_alert = time.time() < st.session_state["alert_until"]
+if show_alert:
+    font_size = "20px" if overlay else "48px"
+    st.markdown(
+        f"""
+        <style>
+        .alert-overlay {{
+          position: fixed;
+          left: 50%;
+          top: 28%;
+          transform: translate(-50%, -50%);
+          z-index: 9999;
+          padding: 14px 18px;
+          border-radius: 18px;
+          background: rgba(0,0,0,0.78);
+          border: 1px solid rgba(255,255,255,0.28);
+          color: white;
+          font-weight: 1000;
+          font-size: {font_size};
+          white-space: nowrap;
+          box-shadow: 0 14px 44px rgba(0,0,0,0.35);
+        }}
+        </style>
+        <div class="alert-overlay">🔔 {st.session_state["alert_text"]}</div>
+        """,
+        unsafe_allow_html=True
+    )
+
+# 운영 화면에서만(선택) 디버그 정보
+if (not overlay) and (not started_at):
+    st.info("세션 시작 전입니다. 좌측에서 '세션 시작' 누르면 승/패 집계가 시작됩니다.")
