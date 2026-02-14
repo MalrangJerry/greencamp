@@ -179,7 +179,7 @@ if not overlay:
 
         st.divider()
         st.subheader("👥 팀 입력 (본명,게임닉#태그)")
-        st.caption("예: 홍길동,Hide on bush#KR1")
+        st.caption("예: 스트리머 닉네임,조회할 롤닉네임 ex.로기닷#KR1")
         team_a_text = st.text_area("팀 A (최대 5줄)", height=140)
         team_b_text = st.text_area("팀 B (최대 5줄)", height=140)
 
@@ -387,3 +387,4 @@ with c1:
     st.markdown(render_team(teamA, "🟥 TEAM A", "red"), unsafe_allow_html=True)
 with c2:
     st.markdown(render_team(teamB, "🟦 TEAM B", "blue"), unsafe_allow_html=True)
+
