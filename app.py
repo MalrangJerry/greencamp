@@ -6,15 +6,16 @@ import requests
 import pandas as pd
 import streamlit as st
 from supabase import create_client
+import streamlit.components.v1 as components
 
 # =====================
 # Config
 # =====================
-POLL_SEC = 60               # Riot/DB polling (초)
-FETCH_MATCH_IDS = 20        # 최근 매치 id 개수
-SOLOQ_QUEUE_ID = 420        # 솔랭만 집계
-REGION = "asia"             # KR account/match 라우팅
-ALERT_SHOW_SEC = 4          # 새 결과 오버레이 표시 시간(초)
+POLL_SEC = 60
+FETCH_MATCH_IDS = 20
+SOLOQ_QUEUE_ID = 420
+REGION = "asia"
+ALERT_SHOW_SEC = 4
 
 # =====================
 # Secrets
@@ -37,132 +38,6 @@ st.set_page_config(
 )
 
 # =====================
-# Minimal / Clean CSS
-# =====================
-BASE_CSS = """
-<style>
-:root{
-  --bg:#0f1115;
-  --panel:rgba(255,255,255,.06);
-  --stroke:rgba(255,255,255,.12);
-  --text:rgba(255,255,255,.92);
-  --muted:rgba(255,255,255,.62);
-  --red:#ff4b6e;
-  --blue:#4aa3ff;
-}
-
-body{background:var(--bg); color:var(--text);}
-.block-container{padding-top: 0.8rem; padding-bottom: 0.8rem;}
-
-.small{font-size:11px;color:var(--muted);}
-.card{
-  border:1px solid var(--stroke);
-  background:var(--panel);
-  border-radius:16px;
-  padding:10px 12px;
-}
-
-.topline{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  margin-bottom:8px;
-}
-
-.timer{
-  font-weight:800;
-  font-size:12px;
-  color:var(--muted);
-  white-space:nowrap;
-}
-
-.score{
-  font-weight:950;
-  font-size:18px;
-  letter-spacing:0.2px;
-  white-space:nowrap;
-}
-
-.score .r{color:var(--red);}
-.score .b{color:var(--blue);}
-
-.grid{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap:8px;
-}
-
-.teamTitle{
-  font-weight:900;
-  font-size:12px;
-  margin-bottom:6px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-}
-
-.table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:12px;
-}
-
-.table th{
-  text-align:left;
-  font-size:10px;
-  color:var(--muted);
-  padding:4px 0;
-  border-bottom:1px solid rgba(255,255,255,.10);
-}
-
-.table td{
-  padding:5px 0;
-  border-bottom:1px solid rgba(255,255,255,.06);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-.num{ text-align:right; width:34px; font-weight:900; }
-
-.overlayToast{
-  position:fixed;
-  left:50%;
-  top:45%;
-  transform:translate(-50%,-50%);
-  z-index:9999;
-  padding:12px 14px;
-  border-radius:14px;
-  background:rgba(0,0,0,.78);
-  border:1px solid rgba(255,255,255,.22);
-  color:white;
-  font-weight:950;
-  font-size:22px;
-  white-space:nowrap;
-  box-shadow:0 14px 40px rgba(0,0,0,.45);
-}
-</style>
-"""
-
-OVERLAY_CSS = """
-<style>
-/* 370 x 240 브라우저 소스용: 여백/텍스트 최소화 */
-.block-container{padding: 8px 10px !important; max-width: 370px;}
-header, footer {visibility: hidden;}
-.card{border-radius:14px; padding:10px 10px;}
-.timer{font-size:11px;}
-.score{font-size:18px;}
-.table{font-size:11px;}
-.teamTitle{font-size:11px;}
-.overlayToast{font-size:20px; top:50%;}
-</style>
-"""
-
-st.markdown(BASE_CSS + (OVERLAY_CSS if overlay else ""), unsafe_allow_html=True)
-
-# =====================
 # Session State
 # =====================
 if "alert_until" not in st.session_state:
@@ -173,7 +48,7 @@ if "last_poll" not in st.session_state:
     st.session_state.last_poll = 0.0
 
 # =====================
-# Riot helpers (Riot ID -> puuid)
+# Riot helpers
 # =====================
 @st.cache_data(ttl=3600)
 def riotid_to_puuid(riot_id: str):
@@ -278,12 +153,11 @@ def existing_match_ids(session_id: int, riot_id: str, match_ids: list[str]) -> s
 def insert_results(rows: list[dict]):
     if rows:
         supabase.table("session_results").upsert(
-            rows,
-            on_conflict="session_id,nickname,match_id"
+            rows, on_conflict="session_id,nickname,match_id"
         ).execute()
 
 # =====================
-# Admin UI (운영 화면)
+# Admin UI
 # =====================
 if not overlay:
     with st.sidebar:
@@ -373,7 +247,7 @@ if not overlay:
 # =====================
 active = get_active_session()
 if not active:
-    st.info("활성 세션이 없습니다. (운영 화면에서 세션을 만들어주세요)")
+    st.info("활성 세션이 없습니다.")
     st.stop()
 
 session_id = active["id"]
@@ -386,9 +260,9 @@ team_b_name = active.get("team_b_name") or "TEAM B"
 players = load_players(session_id)
 
 # =====================
-# Polling (60초마다만)
+# Polling
 # =====================
-new_events = []  # (real_name, win_bool)
+new_events = []
 now = datetime.now(timezone.utc)
 
 do_poll = (not ended_at) and started_at and (time.time() - st.session_state.last_poll >= POLL_SEC)
@@ -439,12 +313,10 @@ if do_poll and players:
                 "win": win_val
             })
             new_events.append((real_name, win_val))
-
-            time.sleep(0.15)  # rate limit 완화
+            time.sleep(0.15)
 
         insert_results(inserts)
 
-    # 오버레이 트리거 (마지막 이벤트 1개)
     if new_events:
         n, w = new_events[-1]
         st.session_state.alert_text = f"{n} {'승리' if w else '패배'}"
@@ -471,7 +343,7 @@ A_wins = sum(wl(p["nickname"])[0] for p in teamA)
 B_wins = sum(wl(p["nickname"])[0] for p in teamB)
 
 # =====================
-# Timer line (단순 표시)
+# Render HTML via components.html (stable)
 # =====================
 timer_line = "시작 전"
 if started_at:
@@ -481,11 +353,7 @@ if started_at:
     if ended_at:
         timer_line += " (종료)"
 
-# =====================
-# Render board (minimal)
-# =====================
-def team_table_html(team_list, badge_color: str):
-    # badge_color: "r" or "b" (색상만)
+def team_rows(team_list):
     rows = ""
     for p in team_list:
         rid = p["nickname"]
@@ -498,65 +366,105 @@ def team_table_html(team_list, badge_color: str):
           <td class="num">{l}</td>
         </tr>
         """
-    if not rows:
-        rows = "<tr><td colspan='3' class='small'>-</td></tr>"
+    return rows or "<tr><td colspan='3' class='small'>-</td></tr>"
 
-    title = team_a_name if badge_color == "r" else team_b_name
-    dot = "🟥" if badge_color == "r" else "🟦"
+css = """
+<style>
+:root{
+  --bg:#0f1115;
+  --panel:rgba(255,255,255,.06);
+  --stroke:rgba(255,255,255,.12);
+  --text:rgba(255,255,255,.92);
+  --muted:rgba(255,255,255,.62);
+  --red:#ff4b6e;
+  --blue:#4aa3ff;
+}
+html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family: ui-sans-serif, system-ui;}
+.card{
+  border:1px solid var(--stroke);
+  background:var(--panel);
+  border-radius:16px;
+  padding:10px 10px;
+}
+.topline{
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  margin-bottom:8px;
+}
+.timer{
+  font-weight:800; font-size:11px; color:var(--muted); white-space:nowrap;
+}
+.score{
+  font-weight:950; font-size:18px; white-space:nowrap;
+}
+.score .r{color:var(--red);}
+.score .b{color:var(--blue);}
+.grid{
+  display:grid; grid-template-columns: 1fr 1fr; gap:8px;
+}
+.teamTitle{
+  display:flex; justify-content:space-between; align-items:center;
+  font-weight:900; font-size:11px; margin-bottom:6px;
+}
+.small{font-size:10px; color:var(--muted);}
+.table{width:100%; border-collapse:collapse; font-size:11px;}
+.table th{
+  text-align:left; font-size:10px; color:var(--muted);
+  padding:4px 0; border-bottom:1px solid rgba(255,255,255,.10);
+}
+.table td{
+  padding:5px 0; border-bottom:1px solid rgba(255,255,255,.06);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.num{text-align:right; width:34px; font-weight:900;}
+.overlayToast{
+  position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+  z-index:9999;
+  padding:12px 14px; border-radius:14px;
+  background:rgba(0,0,0,.78);
+  border:1px solid rgba(255,255,255,.22);
+  color:white; font-weight:950; font-size:20px;
+  white-space:nowrap; box-shadow:0 14px 40px rgba(0,0,0,.45);
+}
+</style>
+"""
 
-    return f"""
-    <div>
-      <div class="teamTitle">
-        <span>{dot} {title}</span>
-        <span class="small">W/L</span>
-      </div>
-      <table class="table">
-        <thead>
-          <tr><th>이름</th><th class="num">승</th><th class="num">패</th></tr>
-        </thead>
-        <tbody>{rows}</tbody>
-      </table>
-    </div>
-    """
+alert_html = ""
+if time.time() < st.session_state.alert_until:
+    alert_html = f"""<div class="overlayToast">🔔 {st.session_state.alert_text}</div>"""
 
-# 제목은 overlay에선 숨기고 미니만
-if not overlay:
-    st.markdown("## 5:5 전광판")
-
-board_html = f"""
+html = f"""
+{css}
 <div class="card">
   <div class="topline">
     <div class="timer">⏱ {timer_line}</div>
     <div class="score">
-      <span class="r">{team_a_name}</span> {A_wins}
-      :
-      {B_wins} <span class="b">{team_b_name}</span>
+      <span class="r">{team_a_name}</span> {A_wins} : {B_wins} <span class="b">{team_b_name}</span>
     </div>
   </div>
 
   <div class="grid">
-    {team_table_html(teamA, "r")}
-    {team_table_html(teamB, "b")}
-  </div>
+    <div>
+      <div class="teamTitle"><span>🟥 {team_a_name}</span><span class="small">W/L</span></div>
+      <table class="table">
+        <thead><tr><th>이름</th><th class="num">승</th><th class="num">패</th></tr></thead>
+        <tbody>{team_rows(teamA)}</tbody>
+      </table>
+    </div>
 
-  <div class="small" style="margin-top:6px;">
-    업데이트: {datetime.now().strftime('%H:%M:%S')} (폴링 {POLL_SEC}s)
+    <div>
+      <div class="teamTitle"><span>🟦 {team_b_name}</span><span class="small">W/L</span></div>
+      <table class="table">
+        <thead><tr><th>이름</th><th class="num">승</th><th class="num">패</th></tr></thead>
+        <tbody>{team_rows(teamB)}</tbody>
+      </table>
+    </div>
   </div>
 </div>
+{alert_html}
 """
-st.markdown(board_html, unsafe_allow_html=True)
 
-# =====================
-# Overlay alert (표 위에 뜸)
-# =====================
-if time.time() < st.session_state.alert_until:
-    st.markdown(
-        f"""<div class="overlayToast">🔔 {st.session_state.alert_text}</div>""",
-        unsafe_allow_html=True
-    )
+# 370x240에 맞게 height 지정 (약간 여유)
+components.html(html, height=240 if overlay else 320, scrolling=False)
 
-# =====================
-# 안내
-# =====================
 if not overlay:
-    st.caption("방송용 오버레이: URL 뒤에 `?overlay=1` 붙여서 사용 (권장 크기: 370×240)")
+    st.caption("방송 오버레이: URL 뒤에 `?overlay=1` (권장 크기 370×240)")
