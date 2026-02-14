@@ -1,6 +1,0 @@
-streamlit
-requests
-pandas
-supabase
-streamlit-autorefresh
-
