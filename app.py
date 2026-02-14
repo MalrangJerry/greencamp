@@ -311,6 +311,7 @@ if do_poll and players:
                 "nickname": riot_id,
                 "match_id": mid,
                 "win": win_val
+                "played_at": played.isoformat()
             })
             new_events.append((real_name, win_val))
             time.sleep(0.15)
@@ -468,3 +469,4 @@ components.html(html, height=240 if overlay else 320, scrolling=False)
 
 if not overlay:
     st.caption("방송 오버레이: URL 뒤에 `?overlay=1` (권장 크기 370×240)")
+
