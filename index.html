@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=370, height=240, initial-scale=1" />
+  <meta name="viewport" content="width=370, height=260, initial-scale=1" />
   <title>LOL Overlay</title>
 
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
@@ -20,47 +20,27 @@
       --accent:#ffd54f;
     }
 
-    body{ margin:0; width:370px; height:240px; background:transparent; overflow:hidden; }
+    body{ margin:0; width:370px; height:260px; background:transparent; overflow:hidden; }
 
     .card{
       position:relative;
-      width:370px; height:240px;
+      width:370px; height:260px;
       box-sizing:border-box;
       padding:10px;
       background:var(--bg);
       border:1px solid var(--stroke);
-      border-radius:0; /* 직사각 */
+      border-radius:0;
       color:var(--text);
       font-family:"Pretendard", system-ui, -apple-system, Segoe UI, sans-serif;
       overflow:hidden;
     }
 
-    .top{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:8px;
-    }
-    .streamer{
-      font-weight:900;
-      font-size:15px;
-      letter-spacing:.2px;
-      max-width:210px;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
-    .title{
-      font-weight:900;
-      font-size:14px;
-      letter-spacing:.4px;
-      opacity:.9;
-      white-space:nowrap;
-    }
-
+    /* ✅ 상단 헤더 제거했으니 타이머를 위로 올리고 살짝 키움 */
     .timer{
-      margin-top:6px;
+      margin-top:0px;
       text-align:center;
       font-weight:900;
-      font-size:16px;
+      font-size:17px;
       letter-spacing:.6px;
       color:var(--accent);
     }
@@ -68,7 +48,7 @@
     .views{
       position:relative;
       margin-top:8px;
-      height:182px;
+      height:198px; /* ✅ 헤더 제거로 확보된 공간을 뷰에 투자 */
     }
     .view{
       position:absolute; inset:0;
@@ -96,19 +76,19 @@
     .teamCol{ text-align:center; }
     .teamName{
       font-weight:1000;
-      font-size:26px;              /* ✅ 팀명 크게 */
+      font-size:28px;
       letter-spacing:.6px;
       opacity:.95;
-      max-width:160px;             /* ✅ 긴 팀명 대비 */
+      max-width:165px;
       margin:0 auto;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
     }
     .teamScore{
-      margin-top:8px;
+      margin-top:10px;
       font-weight:1000;
-      font-size:62px;
+      font-size:66px;   /* ✅ 헤더 없어진만큼 살짝 업 */
       line-height:1;
       font-variant-numeric: tabular-nums;
     }
@@ -134,27 +114,29 @@
     .listHeader{
       display:flex;
       justify-content:space-between;
-      align-items:center;
+      align-items:baseline;
       font-weight:900;
-      font-size:14px;
+      font-size:15px;
       letter-spacing:.3px;
-      margin-bottom:8px;
+      margin-bottom:10px;
       color:var(--muted);
     }
+
+    /* ✅ 선수 글씨 키움 */
     .players{
-      font-size:15px;
-      font-weight:900;
-      line-height:1.22;
+      font-size:17px;
+      font-weight:950;
+      line-height:1.25;
     }
     .player{
       display:flex;
       justify-content:space-between;
       align-items:baseline;
-      margin-top:7px;
-      opacity:.95;
+      margin-top:9px;
+      opacity:.98;
     }
     .pname{
-      max-width:130px;
+      max-width:145px;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .pscore{
@@ -163,8 +145,27 @@
       white-space:nowrap;
       opacity:.95;
     }
-    .dense .players{ font-size:14px; }
-    .dense .player{ margin-top:6px; }
+
+    /* 6명 이상이면 과밀 방지로 살짝 줄임 */
+    .dense .players{ font-size:15px; }
+    .dense .player{ margin-top:7px; }
+    .dense .listHeader{ margin-bottom:8px; }
+
+    /* ✅ 합계(W/L) 미니멀 */
+    .sumLine{
+      margin-top:10px;
+      padding-top:8px;
+      border-top:1px solid rgba(255,255,255,.10);
+
+      font-weight:800;
+      font-size:15px;
+      letter-spacing:.45px;
+      opacity:.78;
+
+      display:flex;
+      justify-content:flex-end; /* ✅ 승패 숫자 열 기준 */
+      font-variant-numeric: tabular-nums;
+    }
 
     /* =========================
        FULLSCREEN MATCH ALERT
@@ -178,7 +179,7 @@
       justify-content:center;
       gap:10px;
 
-      background:rgba(0,0,0,.62);      /* ✅ 화면 전체 덮기 */
+      background:rgba(0,0,0,.62);
       border-radius:0;
       opacity:0;
       pointer-events:none;
@@ -198,10 +199,9 @@
       color:rgba(255,255,255,.85);
       text-transform:uppercase;
     }
-
     .alertResult{
       font-weight:1000;
-      font-size:54px;                 /* ✅ 크게 */
+      font-size:54px;
       line-height:1;
       letter-spacing:1px;
     }
@@ -215,7 +215,6 @@
       max-width:320px;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
-
     .alertKda{
       font-weight:900;
       font-size:16px;
@@ -223,7 +222,6 @@
       color:rgba(255,255,255,.86);
       font-variant-numeric: tabular-nums;
     }
-
     .alertHint{
       margin-top:2px;
       font-weight:800;
@@ -236,11 +234,6 @@
 
 <body>
   <div id="card" class="card">
-
-    <div class="top">
-      <div id="streamer" class="streamer">STREAMER</div>
-      <div class="title">TOTAL SCORE</div>
-    </div>
 
     <div id="timer" class="timer">남은시간 00:00:00</div>
 
@@ -271,6 +264,7 @@
               <span id="blueTotalB" class="blue">0</span>
             </div>
             <div id="bluePlayers" class="players"></div>
+            <div id="blueSum" class="sumLine blue">W 0 / L 0</div>
           </div>
 
           <div>
@@ -279,6 +273,7 @@
               <span id="redTotalB" class="red">0</span>
             </div>
             <div id="redPlayers" class="players"></div>
+            <div id="redSum" class="sumLine red">W 0 / L 0</div>
           </div>
         </div>
       </div>
@@ -287,7 +282,7 @@
     <!-- ✅ 전체화면 알림 -->
     <div id="alert" class="alert">
       <div id="alertStreamer" class="alertStreamer">STREAMER</div>
-      <div id="alertResult" class="alertResult win">WIN</div>
+      <div id="alertResult" class="alertResult win">승리</div>
       <div id="alertName" class="alertName">플레이어</div>
       <div id="alertKda" class="alertKda">KDA 0/0/0</div>
       <div class="alertHint">MATCH END</div>
@@ -296,264 +291,264 @@
   </div>
 
   <script type="module">
-  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-  const SUPABASE_URL = "https://nnvfzuwvhzsmrwddzhtm.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5udmZ6dXd2aHpzbXJ3ZGR6aHRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwNTE2NTgsImV4cCI6MjA4NjYyNzY1OH0.aZ_78os2YeL6vKKiQFDQnWDLGwZP7YMTsZ82iunm8wY";
-  const LOBBY_ID = "lobby1";
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const SUPABASE_URL = "https://nnvfzuwvhzsmrwddzhtm.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5udmZ6dXd2aHpzbXJ3ZGR6aHRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwNTE2NTgsImV4cCI6MjA4NjYyNzY1OH0.aZ_78os2YeL6vKKiQFDQnWDLGwZP7YMTsZ82iunm8wY";
+    const LOBBY_ID = "lobby1";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // 🔊 작은 "뻐끔" 알림음 (승/패 동일)
-  let audioCtx = null;
-  function playPop(){
-    try{
-      if(!audioCtx){
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // 🔊 작은 "뻐끔" 알림음 (승/패 동일)
+    let audioCtx = null;
+    function playPop(){
+      try{
+        if(!audioCtx){
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if(audioCtx.state === "suspended"){
+          audioCtx.resume().catch(()=>{});
+        }
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = "sine";
+        osc.frequency.value = 520;
+
+        const now = audioCtx.currentTime;
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.035, now + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.085);
+      }catch(e){
+        console.log("sound error", e);
       }
+    }
 
-      // 어떤 환경에서는 처음엔 suspended일 수 있음
-      if(audioCtx.state === "suspended"){
-        audioCtx.resume().catch(()=>{});
+    // ===== 화면 전환 (10초 / 10초) =====
+    const viewScore = document.getElementById("viewScore");
+    const viewPlayers = document.getElementById("viewPlayers");
+    let mode = "SCORE";
+    const PERIOD_MS = 10000;
+
+    let rotator = null;
+    function applyMode(){
+      if(mode === "SCORE"){
+        viewScore.classList.add("active");
+        viewPlayers.classList.remove("active");
+      }else{
+        viewPlayers.classList.add("active");
+        viewScore.classList.remove("active");
       }
-
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-
-      osc.type = "sine";
-      osc.frequency.value = 520;    // 톤 (조용하고 부담 없는 정도)
-
-      const now = audioCtx.currentTime;
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.035, now + 0.03);  // 🔉 볼륨(0.02~0.06 추천)
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);  // 0.08초로 아주 짧게
-
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.085);
-    }catch(e){
-      console.log("sound error", e);
     }
-  }
-
-  // ===== 화면 전환 (10초 / 10초) =====
-  const viewScore = document.getElementById("viewScore");
-  const viewPlayers = document.getElementById("viewPlayers");
-  let mode = "SCORE";
-  const PERIOD_MS = 10000;
-
-  let rotator = null;
-  function applyMode(){
-    if(mode === "SCORE"){
-      viewScore.classList.add("active");
-      viewPlayers.classList.remove("active");
-    }else{
-      viewPlayers.classList.add("active");
-      viewScore.classList.remove("active");
-    }
-  }
-  function startRotator(){
-    if(rotator) return;
-    applyMode();
-    rotator = setInterval(()=>{
-      mode = (mode === "SCORE") ? "PLAYERS" : "SCORE";
+    function startRotator(){
+      if(rotator) return;
       applyMode();
-    }, PERIOD_MS);
-  }
-  function stopRotator(){
-    if(rotator){
-      clearInterval(rotator);
-      rotator = null;
+      rotator = setInterval(()=>{
+        mode = (mode === "SCORE") ? "PLAYERS" : "SCORE";
+        applyMode();
+      }, PERIOD_MS);
     }
-  }
-  startRotator();
-
-  // ===== 타이머(카운트다운) =====
-  let lastSettings = null;
-
-  function hhmmss(sec){
-    sec = Math.max(0, Math.floor(sec));
-    const h = String(Math.floor(sec/3600)).padStart(2,"0");
-    const m = String(Math.floor((sec%3600)/60)).padStart(2,"0");
-    const s = String(sec%60).padStart(2,"0");
-    return `${h}:${m}:${s}`;
-  }
-
-  function computeCountdownText(){
-    const status = lastSettings?.session_status ?? "IDLE";
-    if(status !== "RUNNING") return "남은시간 00:00:00";
-
-    const start = lastSettings?.session_start_ts ? Date.parse(lastSettings.session_start_ts) : null;
-    if(!start) return "남은시간 00:00:00";
-
-    const duration = Number(lastSettings?.duration_seconds ?? 10800);
-    const elapsed = (Date.now() - start) / 1000;
-    const remain = duration - elapsed;
-
-    return "남은시간 " + hhmmss(remain);
-  }
-
-  function renderTimer(){
-    document.getElementById("timer").textContent = computeCountdownText();
-  }
-  setInterval(renderTimer, 1000);
-
-  // ===== 상태 렌더 =====
-  let cachedStreamer = "STREAMER";
-
-  function renderState(payload){
-    if(!payload) return;
-
-    cachedStreamer = payload.streamerName ?? "STREAMER";
-    document.getElementById("streamer").textContent = cachedStreamer;
-
-    const blue = payload.teams?.blue;
-    const red  = payload.teams?.red;
-
-    const blueName = blue?.name ?? "BLUE";
-    const redName  = red?.name ?? "RED";
-    const blueTotal = blue?.total ?? 0;
-    const redTotal  = red?.total  ?? 0;
-
-    // SCORE
-    document.getElementById("blueNameA").textContent = blueName;
-    document.getElementById("redNameA").textContent  = redName;
-    document.getElementById("blueTotalA").textContent = blueTotal;
-    document.getElementById("redTotalA").textContent  = redTotal;
-
-    // PLAYERS 헤더
-    document.getElementById("blueNameB").textContent = blueName;
-    document.getElementById("redNameB").textContent  = redName;
-    document.getElementById("blueTotalB").textContent = blueTotal;
-    document.getElementById("redTotalB").textContent  = redTotal;
-
-    // dense
-    const blueCount = (blue?.players?.length ?? 0);
-    const redCount  = (red?.players?.length ?? 0);
-    document.getElementById("card").classList.toggle("dense", Math.max(blueCount, redCount) >= 6);
-
-    // PLAYERS 리스트
-    const blueBox = document.getElementById("bluePlayers");
-    blueBox.innerHTML = "";
-    (blue?.players ?? []).forEach(p=>{
-      blueBox.innerHTML += `
-        <div class="player">
-          <span class="pname">${p.name}</span>
-          <span class="pscore">${p.w}승 ${p.l}패</span>
-        </div>
-      `;
-    });
-
-    const redBox = document.getElementById("redPlayers");
-    redBox.innerHTML = "";
-    (red?.players ?? []).forEach(p=>{
-      redBox.innerHTML += `
-        <div class="player">
-          <span class="pname">${p.name}</span>
-          <span class="pscore">${p.w}승 ${p.l}패</span>
-        </div>
-      `;
-    });
-  }
-
-  // ===== 전체화면 알림(MATCH_END) =====
-  const ALERT_MS = 6000; // ✅ 표시 시간 (원하면 3000~6000 추천)
-  let alertTimer = null;
-  let alertShowing = false;
-
-  function showAlert(ev){
-    const alert = document.getElementById("alert");
-    const aStreamer = document.getElementById("alertStreamer");
-    const aResult = document.getElementById("alertResult");
-    const aName = document.getElementById("alertName");
-    const aKda = document.getElementById("alertKda");
-
-    const isWin = ev.result === "WIN";
-
-    aStreamer.textContent = cachedStreamer; // ✅ 화면 상단 스트리머명
-    aResult.textContent = isWin ? "승리" : "패배";
-    aResult.className = "alertResult " + (isWin ? "win" : "loss");
-
-    aName.textContent = ev.playerName ?? "";
-    aKda.textContent = ev.kda ? `KDA ${ev.kda}` : "KDA -/-/-";
-
-    // 🔊 알림음 (승/패 동일)
-    playPop();
-
-    // 알림 중에는 화면 전환 멈춤 (깔끔)
-    stopRotator();
-    alert.classList.add("show");
-    alertShowing = true;
-
-    clearTimeout(alertTimer);
-    alertTimer = setTimeout(()=>{
-      alert.classList.remove("show");
-      alertShowing = false;
-      // 알림 끝나면 다시 전환 시작
-      startRotator();
-    }, ALERT_MS);
-  }
-
-  // ===== fetch (폴링 백업) =====
-  async function fetchSettings(){
-    const { data } = await supabase
-      .from("lobby_settings")
-      .select("*")
-      .eq("lobby_id", LOBBY_ID)
-      .maybeSingle();
-    lastSettings = data ?? null;
-    renderTimer();
-  }
-
-  async function fetchState(){
-    const { data } = await supabase
-      .from("overlay_state")
-      .select("payload")
-      .eq("lobby_id", LOBBY_ID)
-      .maybeSingle();
-    if(data?.payload) renderState(data.payload);
-  }
-
-  // ===== init =====
-  await fetchSettings();
-  await fetchState();
-
-  setInterval(fetchSettings, 5000);
-  setInterval(fetchState, 5000);
-
-  // realtime
-  supabase.channel("settings")
-    .on("postgres_changes", {
-      event: "*", schema: "public", table: "lobby_settings",
-      filter: `lobby_id=eq.${LOBBY_ID}`
-    }, (e)=>{
-      lastSettings = e.new ?? null;
-      renderTimer();
-    })
-    .subscribe();
-
-  supabase.channel("state")
-    .on("postgres_changes", {
-      event: "*", schema: "public", table: "overlay_state",
-      filter: `lobby_id=eq.${LOBBY_ID}`
-    }, (e)=>{
-      if(e.new?.payload) renderState(e.new.payload);
-    })
-    .subscribe();
-
-  supabase.channel("events")
-    .on("postgres_changes", {
-      event: "INSERT", schema: "public", table: "overlay_events",
-      filter: `lobby_id=eq.${LOBBY_ID}`
-    }, (e)=>{
-      if(e.new?.type === "MATCH_END"){
-        showAlert(e.new.payload);
+    function stopRotator(){
+      if(rotator){
+        clearInterval(rotator);
+        rotator = null;
       }
-    })
-    .subscribe();
-</script>
+    }
+    startRotator();
+
+    // ===== 타이머(카운트다운) =====
+    let lastSettings = null;
+
+    function hhmmss(sec){
+      sec = Math.max(0, Math.floor(sec));
+      const h = String(Math.floor(sec/3600)).padStart(2,"0");
+      const m = String(Math.floor((sec%3600)/60)).padStart(2,"0");
+      const s = String(sec%60).padStart(2,"0");
+      return `${h}:${m}:${s}`;
+    }
+
+    function computeCountdownText(){
+      const status = lastSettings?.session_status ?? "IDLE";
+      if(status !== "RUNNING") return "남은시간 00:00:00";
+
+      const start = lastSettings?.session_start_ts ? Date.parse(lastSettings.session_start_ts) : null;
+      if(!start) return "남은시간 00:00:00";
+
+      const duration = Number(lastSettings?.duration_seconds ?? 10800);
+      const elapsed = (Date.now() - start) / 1000;
+      const remain = duration - elapsed;
+
+      return "남은시간 " + hhmmss(remain);
+    }
+
+    function renderTimer(){
+      document.getElementById("timer").textContent = computeCountdownText();
+    }
+    setInterval(renderTimer, 1000);
+
+    // ===== 상태 렌더 =====
+    let cachedStreamer = "STREAMER";
+
+    function renderState(payload){
+      if(!payload) return;
+
+      // 화면에는 표시 안 하지만(헤더 제거), 알림에서 쓰기 위해 캐싱은 유지
+      cachedStreamer = payload.streamerName ?? "STREAMER";
+
+      const blue = payload.teams?.blue;
+      const red  = payload.teams?.red;
+
+      const blueName = blue?.name ?? "BLUE";
+      const redName  = red?.name ?? "RED";
+      const blueTotal = blue?.total ?? 0; // W
+      const redTotal  = red?.total  ?? 0; // W
+
+      // SCORE
+      document.getElementById("blueNameA").textContent = blueName;
+      document.getElementById("redNameA").textContent  = redName;
+      document.getElementById("blueTotalA").textContent = blueTotal;
+      document.getElementById("redTotalA").textContent  = redTotal;
+
+      // PLAYERS 헤더
+      document.getElementById("blueNameB").textContent = blueName;
+      document.getElementById("redNameB").textContent  = redName;
+      document.getElementById("blueTotalB").textContent = blueTotal;
+      document.getElementById("redTotalB").textContent  = redTotal;
+
+      // dense
+      const blueCount = (blue?.players?.length ?? 0);
+      const redCount  = (red?.players?.length ?? 0);
+      document.getElementById("card").classList.toggle("dense", Math.max(blueCount, redCount) >= 6);
+
+      // PLAYERS 리스트
+      const bluePlayersArr = (blue?.players ?? []);
+      const redPlayersArr  = (red?.players ?? []);
+
+      const blueBox = document.getElementById("bluePlayers");
+      blueBox.innerHTML = "";
+      bluePlayersArr.forEach(p=>{
+        blueBox.innerHTML += `
+          <div class="player">
+            <span class="pname">${p.name}</span>
+            <span class="pscore">${p.w}승 ${p.l}패</span>
+          </div>
+        `;
+      });
+
+      const redBox = document.getElementById("redPlayers");
+      redBox.innerHTML = "";
+      redPlayersArr.forEach(p=>{
+        redBox.innerHTML += `
+          <div class="player">
+            <span class="pname">${p.name}</span>
+            <span class="pscore">${p.w}승 ${p.l}패</span>
+          </div>
+        `;
+      });
+
+      // ✅ 합계(W/L) 미니멀
+      const blueL = bluePlayersArr.reduce((acc, p) => acc + (Number(p.l) || 0), 0);
+      const redL  = redPlayersArr.reduce((acc, p) => acc + (Number(p.l) || 0), 0);
+
+      document.getElementById("blueSum").textContent = `W ${blueTotal} / L ${blueL}`;
+      document.getElementById("redSum").textContent  = `W ${redTotal} / L ${redL}`;
+    }
+
+    // ===== 전체화면 알림(MATCH_END) =====
+    const ALERT_MS = 6000;
+    let alertTimer = null;
+
+    function showAlert(ev){
+      const alert = document.getElementById("alert");
+      const aStreamer = document.getElementById("alertStreamer");
+      const aResult = document.getElementById("alertResult");
+      const aName = document.getElementById("alertName");
+      const aKda = document.getElementById("alertKda");
+
+      const isWin = ev.result === "WIN";
+
+      aStreamer.textContent = cachedStreamer;
+      aResult.textContent = isWin ? "승리" : "패배";
+      aResult.className = "alertResult " + (isWin ? "win" : "loss");
+
+      aName.textContent = ev.playerName ?? "";
+      aKda.textContent = ev.kda ? `KDA ${ev.kda}` : "KDA -/-/-";
+
+      playPop();
+
+      stopRotator();
+      alert.classList.add("show");
+
+      clearTimeout(alertTimer);
+      alertTimer = setTimeout(()=>{
+        alert.classList.remove("show");
+        startRotator();
+      }, ALERT_MS);
+    }
+
+    // ===== fetch (폴링 백업) =====
+    async function fetchSettings(){
+      const { data } = await supabase
+        .from("lobby_settings")
+        .select("*")
+        .eq("lobby_id", LOBBY_ID)
+        .maybeSingle();
+      lastSettings = data ?? null;
+      renderTimer();
+    }
+
+    async function fetchState(){
+      const { data } = await supabase
+        .from("overlay_state")
+        .select("payload")
+        .eq("lobby_id", LOBBY_ID)
+        .maybeSingle();
+      if(data?.payload) renderState(data.payload);
+    }
+
+    // ===== init =====
+    await fetchSettings();
+    await fetchState();
+
+    setInterval(fetchSettings, 5000);
+    setInterval(fetchState, 5000);
+
+    // realtime
+    supabase.channel("settings")
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "lobby_settings",
+        filter: `lobby_id=eq.${LOBBY_ID}`
+      }, (e)=>{
+        lastSettings = e.new ?? null;
+        renderTimer();
+      })
+      .subscribe();
+
+    supabase.channel("state")
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "overlay_state",
+        filter: `lobby_id=eq.${LOBBY_ID}`
+      }, (e)=>{
+        if(e.new?.payload) renderState(e.new.payload);
+      })
+      .subscribe();
+
+    supabase.channel("events")
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "overlay_events",
+        filter: `lobby_id=eq.${LOBBY_ID}`
+      }, (e)=>{
+        if(e.new?.type === "MATCH_END"){
+          showAlert(e.new.payload);
+        }
+      })
+      .subscribe();
+  </script>
 </body>
 </html>
-
-
