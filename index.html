@@ -324,7 +324,7 @@
 
       const now = audioCtx.currentTime;
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.035, now + 0.008);  // 🔉 볼륨(0.02~0.06 추천)
+      gain.gain.exponentialRampToValueAtTime(0.035, now + 0.03);  // 🔉 볼륨(0.02~0.06 추천)
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);  // 0.08초로 아주 짧게
 
       osc.connect(gain);
@@ -555,4 +555,5 @@
 </script>
 </body>
 </html>
+
 
