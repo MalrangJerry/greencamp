@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=370, height=260, initial-scale=1" />
+  <meta name="viewport" content="width=370, height=290, initial-scale=1" />
   <title>LOL Overlay</title>
 
   <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
@@ -20,11 +20,11 @@
       --accent:#ffd54f;
     }
 
-    body{ margin:0; width:370px; height:260px; background:transparent; overflow:hidden; }
+    body{ margin:0; width:370px; height:290px; background:transparent; overflow:hidden; }
 
     .card{
       position:relative;
-      width:370px; height:260px;
+      width:370px; height:290px;
       box-sizing:border-box;
       padding:10px;
       background:var(--bg);
@@ -35,7 +35,6 @@
       overflow:hidden;
     }
 
-    /* ✅ 상단 헤더 제거했으니 타이머를 위로 올리고 살짝 키움 */
     .timer{
       margin-top:0px;
       text-align:center;
@@ -48,7 +47,7 @@
     .views{
       position:relative;
       margin-top:8px;
-      height:198px; /* ✅ 헤더 제거로 확보된 공간을 뷰에 투자 */
+      height:198px;
     }
     .view{
       position:absolute; inset:0;
@@ -88,7 +87,7 @@
     .teamScore{
       margin-top:10px;
       font-weight:1000;
-      font-size:66px;   /* ✅ 헤더 없어진만큼 살짝 업 */
+      font-size:66px;
       line-height:1;
       font-variant-numeric: tabular-nums;
     }
@@ -122,19 +121,28 @@
       color:var(--muted);
     }
 
-    /* ✅ 선수 글씨 키움 */
     .players{
       font-size:17px;
       font-weight:950;
       line-height:1.25;
     }
+
+    /* ✅ 행 구분선(요청 반영) */
     .player{
       display:flex;
       justify-content:space-between;
       align-items:baseline;
-      margin-top:9px;
+
+      margin-top:0;                     /* 기존 margin 제거 */
+      padding:7px 0;                    /* 행 높이 */
       opacity:.98;
+
+      border-bottom:1px solid rgba(255,255,255,.10);
     }
+    .players .player:first-child{
+      border-top:1px solid rgba(255,255,255,.10);
+    }
+
     .pname{
       max-width:145px;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -148,10 +156,10 @@
 
     /* 6명 이상이면 과밀 방지로 살짝 줄임 */
     .dense .players{ font-size:15px; }
-    .dense .player{ margin-top:7px; }
+    .dense .player{ padding:6px 0; }     /* dense에서도 행 높이만 살짝 줄임 */
     .dense .listHeader{ margin-bottom:8px; }
 
-    /* ✅ 합계(W/L) 미니멀 */
+    /* 합계(W/L) 미니멀 */
     .sumLine{
       margin-top:10px;
       padding-top:8px;
@@ -163,13 +171,11 @@
       opacity:.78;
 
       display:flex;
-      justify-content:flex-end; /* ✅ 승패 숫자 열 기준 */
+      justify-content:flex-end;
       font-variant-numeric: tabular-nums;
     }
 
-    /* =========================
-       FULLSCREEN MATCH ALERT
-       ========================= */
+    /* FULLSCREEN MATCH ALERT */
     .alert{
       position:absolute;
       inset:0;
@@ -279,7 +285,7 @@
       </div>
     </div>
 
-    <!-- ✅ 전체화면 알림 -->
+    <!-- 전체화면 알림 -->
     <div id="alert" class="alert">
       <div id="alertStreamer" class="alertStreamer">STREAMER</div>
       <div id="alertResult" class="alertResult win">승리</div>
@@ -297,6 +303,9 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5udmZ6dXd2aHpzbXJ3ZGR6aHRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwNTE2NTgsImV4cCI6MjA4NjYyNzY1OH0.aZ_78os2YeL6vKKiQFDQnWDLGwZP7YMTsZ82iunm8wY";
     const LOBBY_ID = "lobby1";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ✅ 팀명이 payload에서 BLUE/RED로 고정되어 와도, settings 값을 우선 적용하기 위한 캐시
+    let teamNameOverride = { blue: null, red: null };
 
     // 🔊 작은 "뻐끔" 알림음 (승/패 동일)
     let audioCtx = null;
@@ -395,17 +404,26 @@
     // ===== 상태 렌더 =====
     let cachedStreamer = "STREAMER";
 
+    function pickTeamName(which, fromPayload){
+      // settings에서 받아온 override가 있으면 그걸 우선
+      const ov = teamNameOverride?.[which];
+      if(ov && String(ov).trim()) return ov;
+
+      // payload 값이 BLUE/RED(기본값)이라도 일단 보여줘야 하니 fallback
+      return fromPayload || (which === "blue" ? "BLUE" : "RED");
+    }
+
     function renderState(payload){
       if(!payload) return;
 
-      // 화면에는 표시 안 하지만(헤더 제거), 알림에서 쓰기 위해 캐싱은 유지
       cachedStreamer = payload.streamerName ?? "STREAMER";
 
       const blue = payload.teams?.blue;
       const red  = payload.teams?.red;
 
-      const blueName = blue?.name ?? "BLUE";
-      const redName  = red?.name ?? "RED";
+      const blueName = pickTeamName("blue", blue?.name);
+      const redName  = pickTeamName("red",  red?.name);
+
       const blueTotal = blue?.total ?? 0; // W
       const redTotal  = red?.total  ?? 0; // W
 
@@ -426,7 +444,6 @@
       const redCount  = (red?.players?.length ?? 0);
       document.getElementById("card").classList.toggle("dense", Math.max(blueCount, redCount) >= 6);
 
-      // PLAYERS 리스트
       const bluePlayersArr = (blue?.players ?? []);
       const redPlayersArr  = (red?.players ?? []);
 
@@ -452,7 +469,7 @@
         `;
       });
 
-      // ✅ 합계(W/L) 미니멀
+      // 합계(W/L)
       const blueL = bluePlayersArr.reduce((acc, p) => acc + (Number(p.l) || 0), 0);
       const redL  = redPlayersArr.reduce((acc, p) => acc + (Number(p.l) || 0), 0);
 
@@ -499,7 +516,13 @@
         .select("*")
         .eq("lobby_id", LOBBY_ID)
         .maybeSingle();
+
       lastSettings = data ?? null;
+
+      // ✅ 팀명 override 캐시(중요)
+      teamNameOverride.blue = lastSettings?.team_blue_name ?? null;
+      teamNameOverride.red  = lastSettings?.team_red_name ?? null;
+
       renderTimer();
     }
 
@@ -526,6 +549,11 @@
         filter: `lobby_id=eq.${LOBBY_ID}`
       }, (e)=>{
         lastSettings = e.new ?? null;
+
+        // ✅ 팀명 override 즉시 반영
+        teamNameOverride.blue = lastSettings?.team_blue_name ?? null;
+        teamNameOverride.red  = lastSettings?.team_red_name ?? null;
+
         renderTimer();
       })
       .subscribe();
