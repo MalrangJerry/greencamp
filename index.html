@@ -198,10 +198,10 @@
       transform: translateY(0);
     }
 
-    /* ✅ 토스트 구조: 승리 -> 스트리머 -> KDA */
+    /* ✅ 토스트 구조: 승리 -> 표시 닉네임 -> KDA */
     .alertResult{
       font-weight:1000;
-      font-size:64px;        /* ✅ 더 크게 */
+      font-size:64px;
       line-height:1;
       letter-spacing:1px;
     }
@@ -210,7 +210,7 @@
 
     .alertStreamer{
       font-weight:1000;
-      font-size:28px;        /* ✅ 스트리머 이름 크게 */
+      font-size:28px;
       letter-spacing:.8px;
       color:rgba(255,255,255,.95);
       max-width:330px;
@@ -238,7 +238,6 @@
 
 <body>
   <div id="card" class="card">
-
     <div id="timer" class="timer">남은시간 00:00:00</div>
 
     <div class="views">
@@ -283,14 +282,13 @@
       </div>
     </div>
 
-    <!-- ✅ 전체화면 알림(승리 -> 스트리머 -> KDA) -->
+    <!-- ✅ 전체화면 알림(승리 -> 표시 닉네임 -> KDA) -->
     <div id="alert" class="alert">
       <div id="alertResult" class="alertResult win">승리</div>
-      <div id="alertStreamer" class="alertStreamer">스트리머</div>
+      <div id="alertStreamer" class="alertStreamer">표시 닉네임</div>
       <div id="alertKda" class="alertKda">KDA 0/0/0</div>
       <div class="alertHint">MATCH END</div>
     </div>
-
   </div>
 
   <script type="module">
@@ -304,7 +302,7 @@
     // ✅ 팀명 override 캐시 (settings 우선)
     let teamNameOverride = { blue: null, red: null };
 
-    // 🔊 작은 "뻐끔" 알림음 (승/패 동일)
+    // 🔊 작은 "뻐끔" 알림음
     let audioCtx = null;
     function playPop(){
       try{
@@ -399,13 +397,6 @@
     setInterval(renderTimer, 1000);
 
     // ===== 상태 렌더 =====
-    // ✅ streamerName이 payload에 없더라도, settings 값으로 항상 표시되게 변경
-    function getStreamerName(){
-      return (lastSettings?.streamer_name && String(lastSettings.streamer_name).trim())
-        ? lastSettings.streamer_name
-        : "STREAMER";
-    }
-
     function pickTeamName(which, fromPayload){
       const ov = teamNameOverride?.[which];
       if(ov && String(ov).trim()) return ov;
@@ -421,8 +412,8 @@
       const blueName = pickTeamName("blue", blue?.name);
       const redName  = pickTeamName("red",  red?.name);
 
-      const blueTotal = blue?.total ?? 0; // W
-      const redTotal  = red?.total  ?? 0; // W
+      const blueTotal = blue?.total ?? 0;
+      const redTotal  = red?.total  ?? 0;
 
       // SCORE
       document.getElementById("blueNameA").textContent = blueName;
@@ -480,8 +471,8 @@
 
     function showAlert(ev){
       const alert = document.getElementById("alert");
-      const aStreamer = document.getElementById("alertStreamer");
       const aResult = document.getElementById("alertResult");
+      const aPlayer = document.getElementById("alertStreamer"); // ✅ 표시 닉네임 표시용
       const aKda = document.getElementById("alertKda");
 
       const isWin = ev.result === "WIN";
@@ -489,8 +480,8 @@
       aResult.textContent = isWin ? "승리" : "패배";
       aResult.className = "alertResult " + (isWin ? "win" : "loss");
 
-      // ✅ streamer_name을 settings에서 가져오도록 고정 (payload 의존 제거)
-      aStreamer.textContent = getStreamerName();
+      // ✅ admin.html의 "표시 닉네임"(worker가 넣어준 playerName)
+      aPlayer.textContent = (ev.playerName && String(ev.playerName).trim()) ? ev.playerName : "";
 
       aKda.textContent = ev.kda ? `KDA ${ev.kda}` : "KDA -/-/-";
 
