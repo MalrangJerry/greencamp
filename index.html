@@ -127,14 +127,14 @@
       line-height:1.25;
     }
 
-    /* ✅ 행 구분선(요청 반영) */
+    /* ✅ 행 구분선 */
     .player{
       display:flex;
       justify-content:space-between;
       align-items:baseline;
 
-      margin-top:0;                     /* 기존 margin 제거 */
-      padding:7px 0;                    /* 행 높이 */
+      margin-top:0;
+      padding:7px 0;
       opacity:.98;
 
       border-bottom:1px solid rgba(255,255,255,.10);
@@ -154,12 +154,12 @@
       opacity:.95;
     }
 
-    /* 6명 이상이면 과밀 방지로 살짝 줄임 */
+    /* 6명 이상이면 과밀 방지 */
     .dense .players{ font-size:15px; }
-    .dense .player{ padding:6px 0; }     /* dense에서도 행 높이만 살짝 줄임 */
+    .dense .player{ padding:6px 0; }
     .dense .listHeader{ margin-bottom:8px; }
 
-    /* 합계(W/L) 미니멀 */
+    /* 합계(W/L) */
     .sumLine{
       margin-top:10px;
       padding-top:8px;
@@ -198,36 +198,34 @@
       transform: translateY(0);
     }
 
-    .alertStreamer{
-      font-weight:900;
-      font-size:16px;
-      letter-spacing:.6px;
-      color:rgba(255,255,255,.85);
-      text-transform:uppercase;
-    }
+    /* ✅ 토스트 구조: 승리 -> 스트리머 -> KDA */
     .alertResult{
       font-weight:1000;
-      font-size:54px;
+      font-size:64px;        /* ✅ 더 크게 */
       line-height:1;
       letter-spacing:1px;
     }
     .alertResult.win{ color:var(--win); }
     .alertResult.loss{ color:var(--loss); }
 
-    .alertName{
+    .alertStreamer{
       font-weight:1000;
-      font-size:18px;
-      letter-spacing:.3px;
-      max-width:320px;
+      font-size:28px;        /* ✅ 스트리머 이름 크게 */
+      letter-spacing:.8px;
+      color:rgba(255,255,255,.95);
+      max-width:330px;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
+
     .alertKda{
-      font-weight:900;
-      font-size:16px;
+      font-weight:800;
+      font-size:18px;
       letter-spacing:.4px;
       color:rgba(255,255,255,.86);
       font-variant-numeric: tabular-nums;
+      opacity:.9;
     }
+
     .alertHint{
       margin-top:2px;
       font-weight:800;
@@ -285,11 +283,10 @@
       </div>
     </div>
 
-    <!-- 전체화면 알림 -->
+    <!-- ✅ 전체화면 알림(승리 -> 스트리머 -> KDA) -->
     <div id="alert" class="alert">
-      <div id="alertStreamer" class="alertStreamer">STREAMER</div>
       <div id="alertResult" class="alertResult win">승리</div>
-      <div id="alertName" class="alertName">플레이어</div>
+      <div id="alertStreamer" class="alertStreamer">스트리머</div>
       <div id="alertKda" class="alertKda">KDA 0/0/0</div>
       <div class="alertHint">MATCH END</div>
     </div>
@@ -304,7 +301,7 @@
     const LOBBY_ID = "lobby1";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ✅ 팀명이 payload에서 BLUE/RED로 고정되어 와도, settings 값을 우선 적용하기 위한 캐시
+    // ✅ 팀명 override 캐시 (settings 우선)
     let teamNameOverride = { blue: null, red: null };
 
     // 🔊 작은 "뻐끔" 알림음 (승/패 동일)
@@ -402,21 +399,21 @@
     setInterval(renderTimer, 1000);
 
     // ===== 상태 렌더 =====
-    let cachedStreamer = "STREAMER";
+    // ✅ streamerName이 payload에 없더라도, settings 값으로 항상 표시되게 변경
+    function getStreamerName(){
+      return (lastSettings?.streamer_name && String(lastSettings.streamer_name).trim())
+        ? lastSettings.streamer_name
+        : "STREAMER";
+    }
 
     function pickTeamName(which, fromPayload){
-      // settings에서 받아온 override가 있으면 그걸 우선
       const ov = teamNameOverride?.[which];
       if(ov && String(ov).trim()) return ov;
-
-      // payload 값이 BLUE/RED(기본값)이라도 일단 보여줘야 하니 fallback
       return fromPayload || (which === "blue" ? "BLUE" : "RED");
     }
 
     function renderState(payload){
       if(!payload) return;
-
-      cachedStreamer = payload.streamerName ?? "STREAMER";
 
       const blue = payload.teams?.blue;
       const red  = payload.teams?.red;
@@ -485,16 +482,16 @@
       const alert = document.getElementById("alert");
       const aStreamer = document.getElementById("alertStreamer");
       const aResult = document.getElementById("alertResult");
-      const aName = document.getElementById("alertName");
       const aKda = document.getElementById("alertKda");
 
       const isWin = ev.result === "WIN";
 
-      aStreamer.textContent = cachedStreamer;
       aResult.textContent = isWin ? "승리" : "패배";
       aResult.className = "alertResult " + (isWin ? "win" : "loss");
 
-      aName.textContent = ev.playerName ?? "";
+      // ✅ streamer_name을 settings에서 가져오도록 고정 (payload 의존 제거)
+      aStreamer.textContent = getStreamerName();
+
       aKda.textContent = ev.kda ? `KDA ${ev.kda}` : "KDA -/-/-";
 
       playPop();
@@ -519,7 +516,7 @@
 
       lastSettings = data ?? null;
 
-      // ✅ 팀명 override 캐시(중요)
+      // ✅ 팀명 override 캐시
       teamNameOverride.blue = lastSettings?.team_blue_name ?? null;
       teamNameOverride.red  = lastSettings?.team_red_name ?? null;
 
