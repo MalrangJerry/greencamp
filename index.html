@@ -211,8 +211,8 @@
     }
     .listCol{
       height:100%;
-      border:1px solid rgba(255,255,255,.10);
-      background:rgba(255,255,255,.03);
+      border:none;              /* ✅ 네모 테두리 제거 */
+      background:transparent;   /* ✅ 네모 배경 제거 */
       padding:10px 10px;
       box-sizing:border-box;
       overflow:hidden;
@@ -246,7 +246,7 @@
       margin-top:0;
       padding:7px 0;
       opacity:.98;
-      border-bottom:1px solid rgba(255,255,255,.10);
+      border-bottom:1px solid rgba(255,255,255,.10); /* ✅ 밑줄 유지 */
       gap:10px;
     }
     .players .player:first-child{
@@ -301,6 +301,17 @@
     }
     .alertResult.win{ color:var(--win); }
     .alertResult.loss{ color:var(--loss); }
+
+    /* ✅ 추가: 팀명(큰 글씨) */
+    .alertTeam{
+      font-weight:1000;
+      font-size:34px;
+      letter-spacing:.3px;
+      max-width:340px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      text-align:center;
+      opacity:.95;
+    }
 
     .alertStreamer{
       font-weight:1000;
@@ -381,6 +392,10 @@
     <!-- FULLSCREEN ALERT -->
     <div id="alert" class="alert">
       <div id="alertResult" class="alertResult win">승리</div>
+
+      <!-- ✅ 팀명 -->
+      <div id="alertTeam" class="alertTeam"></div>
+
       <div id="alertStreamer" class="alertStreamer"></div>
       <div id="alertKda" class="alertKda">KDA 0/0/0</div>
     </div>
@@ -617,9 +632,7 @@
         `;
       });
 
-      // ✅ (중요) 예전 코드에서 blueSum/redSum을 쓰다가 ReferenceError 나서 전체 스크립트가 죽었음
-      // 그래서 토스트/이벤트 구독까지 못 갔던 것.
-      // 여기서는 관련 라인을 제거했음.
+      // ✅ blueSum/redSum 같은 미정의 변수 사용 제거 (스크립트 전체 죽는거 방지)
     }
 
     function renderNTeams(teamsPayload){
@@ -678,15 +691,25 @@
     function showAlert(ev){
       const alert = document.getElementById("alert");
       const aResult = document.getElementById("alertResult");
+      const aTeam = document.getElementById("alertTeam");
       const aStreamer = document.getElementById("alertStreamer");
       const aKda = document.getElementById("alertKda");
-      const playerName = String(ev?.playerName ?? ev?.player_name ?? "").trim();
+
       const isWin = ev?.result === "WIN";
 
       aResult.textContent = isWin ? "승리" : "패배";
       aResult.className = "alertResult " + (isWin ? "win" : "loss");
 
-     aStreamer.textContent = playerName || cachedStreamer || "";
+      // ✅ 팀명(큰 글씨) + 팀색
+      const teamKey = String(ev?.teamKey ?? ev?.team_key ?? "").trim();
+      const teamName = String(ev?.teamName ?? ev?.team_name ?? "").trim();
+      aTeam.textContent = teamName || "";
+      aTeam.style.color = teamKey ? colorOf(teamKey) : "rgba(255,255,255,.92)";
+
+      // ✅ 표시 닉네임 우선
+      const playerName = String(ev?.playerName ?? ev?.player_name ?? "").trim();
+      aStreamer.textContent = playerName || cachedStreamer || "";
+
       aKda.textContent = ev?.kda ? `KDA ${ev.kda}` : "KDA -/-/-";
 
       playPop();
