@@ -968,7 +968,7 @@
 
       const isWin = ev?.result === "WIN";
 
-      aResult.textContent = isWin ? "승리" : "패배";
+      aResult.textContent = isWin ? "WIN" : "LOSE";
       aResult.className = "alertResult " + (isWin ? "win" : "loss");
 
       const teamKey = String(ev?.teamKey ?? ev?.team_key ?? "").trim();
