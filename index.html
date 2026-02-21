@@ -391,7 +391,6 @@
       justify-content:center;
       gap:10px;
       background:#000;
-      /*background:rgba(0,0,0,.62); #반투명 */
       border-radius:0;
       opacity:0;
       pointer-events:none;
@@ -533,32 +532,32 @@
 
     // ---------- sound ----------
     let audioCtx = null;
-    function playPop(){
-      try{
-        if(!audioCtx){
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if(audioCtx.state === "suspended"){
-          audioCtx.resume().catch(()=>{});
-        }
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = 520;
-
-        const now = audioCtx.currentTime;
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.035, now + 0.008);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
-
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(now);
-        osc.stop(now + 0.085);
-      }catch(e){
-        console.log("sound error", e);
-      }
-    }
+function playPop(){
+try{
+if(!audioCtx){
+audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+}
+audioCtx.resume();
+function beep(freq,t0){
+const osc=audioCtx.createOscillator();
+const gain=audioCtx.createGain();
+osc.type="sine";
+osc.frequency.value=freq;
+gain.gain.setValueAtTime(0.0,t0);
+gain.gain.linearRampToValueAtTime(0.09,t0+0.01);
+gain.gain.linearRampToValueAtTime(0.0,t0+0.15);
+osc.connect(gain);
+gain.connect(audioCtx.destination);
+osc.start(t0);
+osc.stop(t0+0.16);
+}
+const now=audioCtx.currentTime;
+beep(250,now);
+beep(520,now+0.18);
+}catch(e){
+console.log("sound error",e);
+}
+}
 
     // ---------- state caches ----------
     let lastSettings = null;
@@ -1071,8 +1070,4 @@
   </script>
 </body>
 </html>
-
-
-
-
 
