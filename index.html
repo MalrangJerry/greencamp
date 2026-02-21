@@ -363,20 +363,21 @@
     }
     .pnick{
       min-width:0;
+      flex:1;                     /* 🔥 공간 최대 확보 */
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      font-weight:500;
-      font-size:12.5px;
-      color:#fff;
+      font-weight:600;            /* 500 → 600 (너무 얇지 않게) */
+      font-size:12.8px;           /* 12.5 → 12.8 (가독성 향상) */
+      color:#ffffff;
     }
     .pwl{
-      flex:0 0 auto;
+      flex:0 0 auto;              /* 🔥 고정폭 확보 */
       white-space:nowrap;
-      font-weight:800;
-      font-size:10px;
-      letter-spacing:.1px;
-      color:#fff;
+      font-weight:700;            /* 800 → 700 (덜 과함) */
+      font-size:10.5px;             /* 12 → 11 (공간 확보) */
+      letter-spacing:.2px;
+      color:rgba(255,255,255,.78);/* 약간 보조톤 */
       font-variant-numeric: tabular-nums;
     }
 
@@ -1069,3 +1070,4 @@
   </script>
 </body>
 </html>
+
