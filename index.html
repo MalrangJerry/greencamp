@@ -177,7 +177,7 @@
     }
     .rowName{
       font-weight:1000;
-      font-size:18px;
+      font-size:20.5px;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
@@ -186,7 +186,7 @@
     .rowScore{
       text-align:center;
       font-weight:1000;
-      font-size:56px;
+      font-size:36px;
       line-height:1;
       font-variant-numeric: tabular-nums;
     }
@@ -211,8 +211,8 @@
     }
     .listCol{
       height:100%;
-      border:none;              /* ✅ 네모 테두리 제거 */
-      background:transparent;   /* ✅ 네모 배경 제거 */
+      border:none;
+      background:transparent;
       padding:10px 10px;
       box-sizing:border-box;
       overflow:hidden;
@@ -236,7 +236,7 @@
       line-height:1.2;
       flex:1;
       min-height:0;
-      overflow:hidden; /* 원하면 auto */
+      overflow:hidden;
     }
 
     .player{
@@ -246,7 +246,7 @@
       margin-top:0;
       padding:7px 0;
       opacity:.98;
-      border-bottom:1px solid rgba(255,255,255,.10); /* ✅ 밑줄 유지 */
+      border-bottom:1px solid rgba(255,255,255,.10);
       gap:10px;
     }
     .players .player:first-child{
@@ -269,6 +269,116 @@
     .dense .player{ padding:6px 0; }
 
     .muted{ color:var(--muted); }
+
+    /* ✅ 3팀+ PLAYERS VIEW (가로줄 row + 토탈 점수 작게 + 선수 승패 표시) */
+    .playersNWrap{
+      height:100%;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      padding:6px 2px;
+      box-sizing:border-box;
+      overflow:hidden;
+    }
+    .playersNTop{
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      font-weight:1000;
+      font-size:13px;
+      letter-spacing:.2px;
+      opacity:.75;
+      padding:0 4px;
+      box-sizing:border-box;
+    }
+
+    .playersNRows{
+      flex:1;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      overflow:hidden;
+    }
+
+    .teamRowN{
+      flex:1;
+      min-height:0;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.03);
+      display:grid;
+      grid-template-columns: 1.25fr 2.75fr; /* 팀(meta) | 선수 */
+      gap:10px;
+      align-items:center;
+      padding:10px 10px;
+      box-sizing:border-box;
+      overflow:hidden;
+    }
+
+    .teamMeta{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width:0;
+    }
+
+    .teamRowNName{
+      font-weight:1000;
+      font-size:16px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      opacity:.96;
+    }
+
+    .teamScoreMini{
+      display:inline-flex;
+      align-items:baseline;
+      gap:6px;
+      font-weight:1000;
+      font-size:13px;
+      opacity:.9;
+      white-space:nowrap;
+    }
+    .teamScoreMini .num{
+      font-variant-numeric: tabular-nums;
+      font-size:18px;
+      line-height:1;
+    }
+
+    .teamRowNPlayers{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap:10px;
+      row-gap:6px;
+      overflow:hidden;
+    }
+
+    .pitem{
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      gap:8px;
+      min-width:0;
+    }
+    .pnick{
+      min-width:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      font-weight:400;
+      font-size:12px;
+      color:#fff;
+    }
+    .pwl{
+      flex:0 0 auto;
+      white-space:nowrap;
+      font-weight:300;
+      font-size:11px;
+      letter-spacing:.1px;
+      opacity:.90;
+      font-variant-numeric: tabular-nums;
+    }
 
     /* FULLSCREEN MATCH ALERT */
     .alert{
@@ -302,7 +412,6 @@
     .alertResult.win{ color:var(--win); }
     .alertResult.loss{ color:var(--loss); }
 
-    /* ✅ 추가: 팀명(큰 글씨) */
     .alertTeam{
       font-weight:1000;
       font-size:34px;
@@ -387,15 +496,21 @@
           </div>
         </div>
       </div>
+
+      <!-- ✅ PLAYERS (3+ teams) -->
+      <div id="viewPlayersN" class="view">
+        <div class="playersNWrap">
+          <div class="playersNTop">
+          </div>
+          <div id="playersNRows" class="playersNRows"></div>
+        </div>
+      </div>
     </div>
 
     <!-- FULLSCREEN ALERT -->
     <div id="alert" class="alert">
       <div id="alertResult" class="alertResult win">승리</div>
-
-      <!-- ✅ 팀명 -->
       <div id="alertTeam" class="alertTeam"></div>
-
       <div id="alertStreamer" class="alertStreamer"></div>
       <div id="alertKda" class="alertKda">KDA 0/0/0</div>
     </div>
@@ -410,7 +525,8 @@
     const LOBBY_ID = "lobby1";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const PERIOD_MS = 10000;
+    const PERIOD_MS = 10000;  // 화면 토글 주기
+    const PAGE_MS = 5000;     // (3팀+) 선수 화면에서 팀 페이지 넘김 주기
     const ALERT_MS = 6000;
 
     // ---------- sound ----------
@@ -451,6 +567,10 @@
     ];
 
     let cachedStreamer = "";
+
+    // (3팀+) players 페이지 캐시
+    let nPlayersPages = [];      // [[team,team,team],[team...],...]
+    let nPlayersPageIdx = 0;
 
     // ---------- helpers ----------
     function hhmmss(sec){
@@ -524,38 +644,88 @@
     }
 
     function setActiveView(viewId){
-      const ids = ["viewScore2","viewScoreN","viewPlayers"];
+      const ids = ["viewScore2","viewScoreN","viewPlayers","viewPlayersN"];
       for(const id of ids){
         document.getElementById(id).classList.remove("active");
       }
       document.getElementById(viewId).classList.add("active");
     }
 
-    // ---------- rotator (2팀일 때만) ----------
-    let mode = "SCORE";
-    let rotator = null;
+    // ---------- rotator (2 teams) ----------
+    let mode2 = "SCORE";
+    let rotator2 = null;
 
     function applyMode2Teams(){
-      if(mode === "SCORE"){
+      if(mode2 === "SCORE"){
         setActiveView("viewScore2");
       }else{
         setActiveView("viewPlayers");
       }
     }
 
-    function startRotator(){
-      if(rotator) return;
+    function startRotator2(){
+      if(rotator2) return;
       applyMode2Teams();
-      rotator = setInterval(()=>{
-        mode = (mode === "SCORE") ? "PLAYERS" : "SCORE";
+      rotator2 = setInterval(()=>{
+        mode2 = (mode2 === "SCORE") ? "PLAYERS" : "SCORE";
         applyMode2Teams();
       }, PERIOD_MS);
     }
 
-    function stopRotator(){
-      if(rotator){
-        clearInterval(rotator);
-        rotator = null;
+    function stopRotator2(){
+      if(rotator2){
+        clearInterval(rotator2);
+        rotator2 = null;
+      }
+    }
+
+    // ---------- rotator (3+ teams) ----------
+    let modeN = "SCORE_N";      // SCORE_N / PLAYERS_N
+    let rotatorN = null;
+    let pageRotatorN = null;
+
+    function applyModeNTeams(){
+      if(modeN === "SCORE_N"){
+        setActiveView("viewScoreN");
+        stopPageRotatorN();
+      }else{
+        setActiveView("viewPlayersN");
+        startPageRotatorN();
+        renderPlayersNPage(nPlayersPageIdx);
+      }
+    }
+
+    function startRotatorN(){
+      if(rotatorN) return;
+      applyModeNTeams();
+      rotatorN = setInterval(()=>{
+        modeN = (modeN === "SCORE_N") ? "PLAYERS_N" : "SCORE_N";
+        applyModeNTeams();
+      }, PERIOD_MS);
+    }
+
+    function stopRotatorN(){
+      if(rotatorN){
+        clearInterval(rotatorN);
+        rotatorN = null;
+      }
+      stopPageRotatorN();
+    }
+
+    function startPageRotatorN(){
+      if(pageRotatorN) return;
+      pageRotatorN = setInterval(()=>{
+        if(modeN !== "PLAYERS_N") return;
+        if(!nPlayersPages.length) return;
+        nPlayersPageIdx = (nPlayersPageIdx + 1) % nPlayersPages.length;
+        renderPlayersNPage(nPlayersPageIdx);
+      }, PAGE_MS);
+    }
+
+    function stopPageRotatorN(){
+      if(pageRotatorN){
+        clearInterval(pageRotatorN);
+        pageRotatorN = null;
       }
     }
 
@@ -631,8 +801,6 @@
           </div>
         `;
       });
-
-      // ✅ blueSum/redSum 같은 미정의 변수 사용 제거 (스크립트 전체 죽는거 방지)
     }
 
     function renderNTeams(teamsPayload){
@@ -661,6 +829,85 @@
       });
     }
 
+    // ✅ 3팀+ 선수 화면: 3팀씩 페이지로
+    function buildPlayersNPages(teamsPayload){
+      const teams = Array.isArray(teamsPayload) ? teamsPayload : [];
+      const pages = [];
+      for(let i=0;i<teams.length;i+=3){
+        pages.push(teams.slice(i, i+3));
+      }
+      nPlayersPages = pages.length ? pages : [[]];
+      if(nPlayersPageIdx >= nPlayersPages.length) nPlayersPageIdx = 0;
+    }
+
+    function renderPlayersNPage(pageIdx){
+      const rows = document.getElementById("playersNRows");
+
+      const totalPages = Math.max(1, nPlayersPages.length);
+      const idx = Math.max(0, Math.min(pageIdx, totalPages-1));
+
+      rows.innerHTML = "";
+
+      const pageTeams = nPlayersPages[idx] || [];
+
+      pageTeams.forEach(t=>{
+        const key = String(t?.key ?? "").trim();
+        const name = nameOf(key, t?.name);
+        const W = Number(t?.total ?? 0);
+        const players = Array.isArray(t?.players) ? t.players : [];
+        const c = colorOf(key);
+
+        const row = document.createElement("div");
+        row.className = "teamRowN";
+
+        const playersHtml = players.map(p=>{
+          const nm = String(p?.name ?? "").trim();
+          const pw = Number(p?.w ?? 0);
+          const pl = Number(p?.l ?? 0);
+          return `
+            <div class="pitem">
+              <span class="pnick">${nm}</span>
+              <span class="pwl">${pw}승 ${pl}패</span>
+            </div>
+          `;
+        }).join("");
+
+        row.innerHTML = `
+          <div class="teamMeta">
+            <div class="teamRowNName" style="color:${c}">${name}</div>
+            <div class="teamScoreMini" style="color:${c}">
+              <span>WIN</span><span class="num">${W}</span>
+            </div>
+          </div>
+          <div class="teamRowNPlayers">${playersHtml}</div>
+        `;
+
+        rows.appendChild(row);
+      });
+
+      // 3줄 고정 느낌(빈 줄 패딩)
+      const targetRows = 3;
+      const missing = targetRows - pageTeams.length;
+      for(let i=0;i<missing;i++){
+        const empty = document.createElement("div");
+        empty.className = "teamRowN";
+        empty.style.border = "1px solid rgba(255,255,255,.06)";
+        empty.style.background = "rgba(255,255,255,.02)";
+        empty.innerHTML = `
+          <div class="teamMeta">
+            <div class="teamRowNName muted"></div>
+            <div class="teamScoreMini muted"><span> </span><span class="num"> </span></div>
+          </div>
+          <div class="teamRowNPlayers"></div>
+        `;
+        rows.appendChild(empty);
+      }
+
+      const maxPlayers = Math.max(0, ...pageTeams.map(t => (Array.isArray(t?.players) ? t.players.length : 0)));
+      const dense = maxPlayers >= 6;
+      document.getElementById("card").classList.toggle("dense", dense);
+    }
+
     function renderState(payload){
       if(!payload) return;
 
@@ -670,17 +917,40 @@
       const teamCount = teamsFromSettings.length;
 
       if(teamCount >= 3){
-        stopRotator();
-        setActiveView("viewScoreN");
-        const fill = (teamsPayload.length >= 3) ? teamsPayload : teamsFromSettings.map(t=>({ ...t, total:0, players:[] }));
-        renderNTeams(fill);
-      }else{
-        startRotator();
-        const fill = (teamsPayload.length >= 2) ? teamsPayload : teamsFromSettings.map(t=>({ ...t, total:0, players:[] }));
+        stopRotator2();
+
+        const fill = (teamsPayload.length >= 3)
+          ? teamsPayload
+          : teamsFromSettings.map(t=>({ ...t, total:0, players:[] }));
+
         const ordered = teamsFromSettings.map(s=>{
           const hit = fill.find(x=>String(x.key)===String(s.key));
           return hit ? hit : ({ ...s, total:0, players:[] });
         });
+
+        renderNTeams(ordered);
+
+        buildPlayersNPages(ordered);
+        if(modeN === "PLAYERS_N"){
+          renderPlayersNPage(nPlayersPageIdx);
+        }
+
+        startRotatorN();
+        applyModeNTeams();
+
+      }else{
+        stopRotatorN();
+
+        startRotator2();
+        const fill = (teamsPayload.length >= 2)
+          ? teamsPayload
+          : teamsFromSettings.map(t=>({ ...t, total:0, players:[] }));
+
+        const ordered = teamsFromSettings.map(s=>{
+          const hit = fill.find(x=>String(x.key)===String(s.key));
+          return hit ? hit : ({ ...s, total:0, players:[] });
+        });
+
         render2Teams(ordered);
       }
     }
@@ -700,13 +970,11 @@
       aResult.textContent = isWin ? "승리" : "패배";
       aResult.className = "alertResult " + (isWin ? "win" : "loss");
 
-      // ✅ 팀명(큰 글씨) + 팀색
       const teamKey = String(ev?.teamKey ?? ev?.team_key ?? "").trim();
       const teamName = String(ev?.teamName ?? ev?.team_name ?? "").trim();
       aTeam.textContent = teamName || "";
       aTeam.style.color = teamKey ? colorOf(teamKey) : "rgba(255,255,255,.92)";
 
-      // ✅ 표시 닉네임 우선
       const playerName = String(ev?.playerName ?? ev?.player_name ?? "").trim();
       aStreamer.textContent = playerName || cachedStreamer || "";
 
@@ -714,14 +982,21 @@
 
       playPop();
 
-      stopRotator();
+      stopRotator2();
+      stopRotatorN();
+
       alert.classList.add("show");
 
       clearTimeout(alertTimer);
       alertTimer = setTimeout(()=>{
         alert.classList.remove("show");
-        if(teamsFromSettings.length <= 2){
-          startRotator();
+
+        if(teamsFromSettings.length >= 3){
+          startRotatorN();
+          applyModeNTeams();
+        }else{
+          startRotator2();
+          applyMode2Teams();
         }
       }, ALERT_MS);
     }
